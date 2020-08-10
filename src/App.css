@@ -47,3 +47,10 @@ tr:nth-child(even) {
   width: 50%;
   text-align: center;
 }
+
+.delete {
+  background-color: #ff8a65;
+  color: #d84315;
+  border-radius: 20px;
+  cursor: pointer;
+}

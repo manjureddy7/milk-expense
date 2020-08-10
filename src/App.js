@@ -1,12 +1,14 @@
 import React, {useState, useEffect} from 'react';
 import './App.css';
 
+import { v4 as uuidv4 } from 'uuid';
+
 // Components
 import UserInput from './components/UserInput';
 import TabularView from './components/TabluarView';
 
 // Firestore db
-import { db } from './firebase';
+import firebase, { db } from './firebase';
 
 function App() {
 
@@ -14,7 +16,7 @@ function App() {
   const [dataFromFirestore, setDataFromFirestore] = useState([])
 
   useEffect(() => {
-    db.collection("milk").get().then(querySnapshot => {
+    db.collection("milk").orderBy("timestamp", "desc").get().then(querySnapshot => {
       const data = querySnapshot.docs.map(doc => doc.data());
       setDataFromFirestore(data);
     })
@@ -43,13 +45,16 @@ function App() {
   const milkDetails = (value) => {
     const finalValue = calculatePrice(value);
     setFinalValueTable([...finalValueTable,finalValue]);
+    const uid = uuidv4();
     try{
-      db.collection("milk").add({
+      db.collection("milk").doc(uid).set({
         milkPrice: finalValue.milkPrice,
         milkQuantity: finalValue.milkQuantity,
         fatValue: finalValue.fatValue,
         commission: finalValue.commissionAmount,
-        finalPrice: finalValue.finalPrice
+        finalPrice: finalValue.finalPrice,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        uniqueId: uid
       }).then(() => {})
     }catch(error) {
       console.log("Something went wrong while storing to database", error)
@@ -63,14 +68,22 @@ function App() {
     )
   }
 
+  const deleteDoc = (id) => {
+    db.collection("milk").doc(id).delete().then(() =>{
+      db.collection("milk").orderBy("timestamp", "desc").get().then(querySnapshot => {
+        const data = querySnapshot.docs.map(doc => doc.data());
+        setDataFromFirestore(data);
+      })
+    }).catch(error => console.log("Error while deleteing collection"))
+  }
+
   return ( 
     <>
       <UserInput milkDetails={milkDetails}/>
         { 
           dataFromFirestore .length > 0 && finalPrice()
-        } 
-      
-      <TabularView finalValueTable={dataFromFirestore} />
+        }
+      <TabularView finalValueTable={dataFromFirestore} deleteDoc={deleteDoc}/>
     </>
   );
 }
